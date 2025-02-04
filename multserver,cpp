@@ -1,0 +1,60 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <thread>
+#include <chrono>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
+const std::string con_file = "con";
+
+struct ClientRequest {
+    std::string name;
+    double height;
+    double weight;
+};
+
+struct ServerResponse {
+    std::string result;
+};
+
+std::string analyzeHealth(double height, double weight) {
+    double bmi = weight / ((height / 100) * (height / 100));
+    if (bmi < 18.5) return "Нехватка веса";
+    else if (bmi >= 18.5 && bmi <= 24.9) return "Нормально";
+    else return "Превышение веса";
+}
+
+void processClient(const std::string& client_name, const ClientRequest& request) {
+    std::string client_file = client_name + ".txt";
+    ServerResponse response;
+    response.result = analyzeHealth(request.height, request.weight);
+
+    std::ofstream out(client_file, std::ios::app);
+    if (out.is_open()) {
+        out << response.result << std::endl;
+    }
+}
+
+int main() {
+    // Создаем файл для общения с клиентами
+    std::ofstream(con_file).close();
+
+    while (true) {
+        std::ifstream in(con_file);
+        if (in.is_open()) {
+            std::string client_name;
+            ClientRequest request;
+            while (in >> client_name >> request.height >> request.weight) {
+                processClient(client_name, request);
+            }
+            in.close();
+            // Очищаем файл после обработки запросов
+            std::ofstream(con_file, std::ios::trunc).close();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+
+    return 0;
+}
